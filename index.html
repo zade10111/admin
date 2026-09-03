@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="assets/css/farmnet-responsive.css">
+  <title>DARAWAT Loading</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+ .darawat-loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #fafcf9;
+      background-image: url('storage/products/background color.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .darawat-loader-overlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      max-width: 400px;
+      animation: contentFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes contentFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .loader-logo-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .loader-icon-box {
+      width: 56px;
+      height: 56px;
+      background: #f4faf4;
+      border: 1.5px solid #a3d9b1;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(15, 77, 42, 0.08);
+    }
+
+    .loader-icon-box svg {
+      width: 36px;
+      height: auto;
+    }
+
+    .loader-brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1b251d;
+      letter-spacing: -0.5px;
+    }
+
+    .loader-brand-title span {
+      color: #0f4d2a;
+    }
+
+    .loader-tagline {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 28px;
+    }
+
+    .loader-spinner-container {
+      margin-bottom: 16px;
+    }
+
+    .spinner-ring {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #edf2ee;
+      border-top: 3px solid #0f4d2a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loader-subtext {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- DARAWAT Modern Loading Screen Component -->
+  <div id="darawat-loader" class="darawat-loader-overlay">
+    <div class="loader-content">
+      
+      <!-- Logo & Branding -->
+      <div class="loader-logo-wrapper">
+        <div class="loader-icon-box">
+          <img src="storage/products/logo.png" alt="DARAWAT Logo" class="brand-logo-img">
+        </div>
+        <div class="loader-brand-title">DARAWAT</div>
+      </div>
+
+      <!-- Tagline -->
+      <p class="loader-tagline">Connecting Communities, Supporting Local Producers</p>
+
+      <!-- Clean Smooth Spinner Indicator -->
+      <div class="loader-spinner-container">
+        <div class="spinner-ring"></div>
+      </div>
+
+      <!-- Status Subtext -->
+      <div class="loader-subtext">Loading DARAWAT...</div>
+      
+    </div>
+  </div>
+
+  <script>
+    async function getTargetRedirectUrl() {
+      try {
+        const response = await fetch('api/api.php?action=me&_=' + Date.now(), {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (data.authenticated && data.user) {
+          try {
+            localStorage.setItem('darawatActiveUser', JSON.stringify({
+              id: data.user.public_id,
+              fullName: data.user.full_name,
+              email: data.user.email,
+              contactNumber: data.user.contact_number || '',
+              userRole: data.user.role === 'producer' ? 'seller' : data.user.role,
+              verificationStatus: data.user.verification_status,
+              producerStatus: data.user.producer_status
+            }));
+          } catch (_) {}
+          if (data.user.role === 'admin') return 'pages/admin/admin.html';
+          if (data.user.role === 'producer') {
+            return data.user.producer_status === 'approved'
+              ? 'pages/auth/register-as-seller.html'
+              : 'pages/auth/producer-verification-pending.html';
+          }
+          return 'pages/auth/register-as-buyer.html';
+        }
+        // Never let an old browser cache decide who is logged in.
+        localStorage.removeItem('darawatActiveUser');
+      } catch (_) {
+        // If the backend is unavailable, do not silently enter another
+        // user's cached account.
+        localStorage.removeItem('darawatActiveUser');
+      }
+      return 'pages/auth/guest-mode.html';
+    }
+
+    async function redirectFromLoader() {
+      const target = await getTargetRedirectUrl();
+      window.location.replace(target);
+    }
+
+    window.addEventListener('load', function() {
+      const loader = document.getElementById('darawat-loader');
+      if (loader) {
+        setTimeout(() => {
+          loader.classList.add('fade-out');
+          setTimeout(redirectFromLoader, 400);
+        }, 900);
+      }
+    });
+
+    setTimeout(function() {
+      const loader = document.getElementById('darawat-loader');
+      if (loader && !loader.classList.contains('fade-out')) {
+        redirectFromLoader();
+      }
+    }, 5000);
+  </script>
+
+</body>
+</html>
